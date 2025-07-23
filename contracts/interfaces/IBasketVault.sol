@@ -9,31 +9,32 @@ import "../libraries/Types.sol";
  */
 interface IBasketVault {
     /**
-     * @notice Mints index tokens by depositing HBAR
+     * @notice Mints index tokens by depositing USDC
+     * @param usdcAmount Amount of USDC to deposit
      * @param minShares Minimum number of shares to receive
      * @param deadline Transaction deadline
      * @return shares Number of index token shares minted
      */
-    function mint(uint256 minShares, uint256 deadline) external payable returns (uint256 shares);
+    function mint(uint256 usdcAmount, uint256 minShares, uint256 deadline) external returns (uint256 shares);
 
     /**
-     * @notice Redeems index tokens for HBAR
+     * @notice Redeems index tokens for USDC
      * @param shares Number of shares to redeem
-     * @param minAmount Minimum HBAR amount to receive
+     * @param minAmount Minimum USDC amount to receive
      * @param deadline Transaction deadline
-     * @return amount Amount of HBAR received
+     * @return amount Amount of USDC received
      */
     function redeem(uint256 shares, uint256 minAmount, uint256 deadline) external returns (uint256 amount);
 
     /**
-     * @notice Gets the current NAV (Net Asset Value) per share in HBAR
-     * @return navPerShare NAV per share in wei
+     * @notice Gets the current NAV (Net Asset Value) per share in USDC
+     * @return navPerShare NAV per share (6 decimals for USDC)
      */
     function getNavPerShare() external view returns (uint256 navPerShare);
 
     /**
-     * @notice Gets the total value locked in the vault in HBAR
-     * @return tvl Total value locked in wei
+     * @notice Gets the total value locked in the vault in USDC
+     * @return tvl Total value locked (6 decimals for USDC)
      */
     function getTotalValueLocked() external view returns (uint256 tvl);
 
@@ -58,13 +59,13 @@ interface IBasketVault {
     /**
      * @notice Withdraws collected fees (only callable by owner)
      * @param to Address to send fees to
-     * @param amount Amount of fees to withdraw
+     * @param amount Amount of fees to withdraw in USDC
      */
     function withdrawFees(address to, uint256 amount) external;
 
     /**
      * @notice Gets the amount of fees collected
-     * @return fees Amount of fees in HBAR
+     * @return fees Amount of fees in USDC
      */
     function getCollectedFees() external view returns (uint256 fees);
 
@@ -72,7 +73,7 @@ interface IBasketVault {
     event Minted(
         address indexed user,
         uint256 indexed indexId,
-        uint256 hbarIn,
+        uint256 usdcIn,
         uint256 sharesOut,
         uint256 navPerShare
     );
@@ -81,7 +82,7 @@ interface IBasketVault {
         address indexed user,
         uint256 indexed indexId,
         uint256 sharesIn,
-        uint256 hbarOut,
+        uint256 usdcOut,
         uint256 navPerShare
     );
 

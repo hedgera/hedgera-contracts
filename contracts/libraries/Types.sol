@@ -44,8 +44,8 @@ library Types {
         address vault;              // Vault contract address
         address indexToken;         // Index token contract address
         uint256 creationTime;       // Block timestamp when created
-        uint256 totalValueLocked;   // Total value locked in HBAR
-        uint256 totalVolume;        // Total trading volume in HBAR
+        uint256 totalValueLocked;   // Total value locked in USDC
+        uint256 totalVolume;        // Total trading volume in USDC
         IndexStatus status;         // Current status
         FeeConfig fees;             // Fee configuration
         Component[] components;     // Basket components
@@ -66,17 +66,17 @@ library Types {
     struct RedeemParams {
         uint256 indexId;        // Index to redeem from
         uint256 shares;         // Shares to redeem
-        uint256 minAmount;      // Minimum HBAR to receive
+        uint256 minAmount;      // Minimum USDC to receive
         uint256 deadline;       // Transaction deadline
-        bool inKind;           // Whether to redeem in-kind (tokens) or cash (HBAR)
+        bool inKind;           // Whether to redeem in-kind (tokens) or cash (USDC)
     }
 
     /**
      * @notice Swap operation details for DEX interactions
      */
     struct SwapParams {
-        address tokenIn;        // Input token address (address(0) for HBAR)
-        address tokenOut;       // Output token address (address(0) for HBAR)
+        address tokenIn;        // Input token address (USDC address for base currency)
+        address tokenOut;       // Output token address (USDC address for base currency)
         uint256 amountIn;       // Input amount
         uint256 amountOutMin;   // Minimum output amount
         address to;             // Recipient address

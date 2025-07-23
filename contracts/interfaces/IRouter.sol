@@ -9,30 +9,15 @@ import "../libraries/Types.sol";
  */
 interface IRouter {
     /**
-     * @notice Swaps exact HBAR for tokens
+     * @notice Swaps exact USDC for tokens
+     * @param amountIn Amount of USDC to swap
      * @param amountOutMin Minimum amount of tokens to receive
      * @param path Array of token addresses for the swap path
      * @param to Address to receive the tokens
      * @param deadline Transaction deadline
      * @return amounts Array of amounts for each step in the path
      */
-    function swapExactETHForTokens(
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external payable returns (uint256[] memory amounts);
-
-    /**
-     * @notice Swaps exact tokens for HBAR
-     * @param amountIn Amount of tokens to swap
-     * @param amountOutMin Minimum amount of HBAR to receive
-     * @param path Array of token addresses for the swap path
-     * @param to Address to receive the HBAR
-     * @param deadline Transaction deadline
-     * @return amounts Array of amounts for each step in the path
-     */
-    function swapExactTokensForETH(
+    function swapExactUSDCForTokens(
         uint256 amountIn,
         uint256 amountOutMin,
         address[] calldata path,
@@ -41,8 +26,25 @@ interface IRouter {
     ) external returns (uint256[] memory amounts);
 
     /**
-     * @notice Gets the amount of tokens that would be received for a given HBAR input
-     * @param amountIn Amount of HBAR to swap
+     * @notice Swaps exact tokens for USDC
+     * @param amountIn Amount of tokens to swap
+     * @param amountOutMin Minimum amount of USDC to receive
+     * @param path Array of token addresses for the swap path
+     * @param to Address to receive the USDC
+     * @param deadline Transaction deadline
+     * @return amounts Array of amounts for each step in the path
+     */
+    function swapExactTokensForUSDC(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external returns (uint256[] memory amounts);
+
+    /**
+     * @notice Gets the amount of tokens that would be received for a given USDC input
+     * @param amountIn Amount of USDC to swap
      * @param path Array of token addresses for the swap path
      * @return amounts Array of amounts for each step in the path
      */
@@ -52,7 +54,7 @@ interface IRouter {
         returns (uint256[] memory amounts);
 
     /**
-     * @notice Gets the amount of HBAR needed to receive a specific amount of tokens
+     * @notice Gets the amount of USDC needed to receive a specific amount of tokens
      * @param amountOut Amount of tokens to receive
      * @param path Array of token addresses for the swap path
      * @return amounts Array of amounts for each step in the path
@@ -63,34 +65,36 @@ interface IRouter {
         returns (uint256[] memory amounts);
 
     /**
-     * @notice Swaps HBAR for multiple tokens in specified proportions
+     * @notice Swaps USDC for multiple tokens in specified proportions
+     * @param usdcAmount Amount of USDC to swap
      * @param tokens Array of token addresses to buy
      * @param weights Array of weights for each token (basis points)
      * @param minAmounts Array of minimum amounts for each token
      * @param deadline Transaction deadline
      * @return amounts Array of token amounts received
      */
-    function swapETHForTokensProportional(
+    function swapUSDCForTokensProportional(
+        uint256 usdcAmount,
         address[] calldata tokens,
         uint256[] calldata weights,
         uint256[] calldata minAmounts,
         uint256 deadline
-    ) external payable returns (uint256[] memory amounts);
+    ) external returns (uint256[] memory amounts);
 
     /**
-     * @notice Swaps multiple tokens for HBAR
+     * @notice Swaps multiple tokens for USDC
      * @param tokens Array of token addresses to sell
      * @param amounts Array of token amounts to sell
-     * @param minETHAmount Minimum HBAR amount to receive
+     * @param minUSDCAmount Minimum USDC amount to receive
      * @param deadline Transaction deadline
-     * @return ethAmount Amount of HBAR received
+     * @return usdcAmount Amount of USDC received
      */
-    function swapTokensForETH(
+    function swapTokensForUSDC(
         address[] calldata tokens,
         uint256[] calldata amounts,
-        uint256 minETHAmount,
+        uint256 minUSDCAmount,
         uint256 deadline
-    ) external returns (uint256 ethAmount);
+    ) external returns (uint256 usdcAmount);
 
     /**
      * @notice Gets the SaucerSwap router address
@@ -99,10 +103,10 @@ interface IRouter {
     function getSaucerSwapRouter() external view returns (address router);
 
     /**
-     * @notice Gets the WHBAR (Wrapped HBAR) token address
-     * @return whbar The WHBAR token address
+     * @notice Gets the USDC token address
+     * @return usdc The USDC token address
      */
-    function getWHBAR() external view returns (address whbar);
+    function getUSDC() external view returns (address usdc);
 
     // Events
     event SwapExecuted(
@@ -115,7 +119,7 @@ interface IRouter {
 
     event ProportionalSwapExecuted(
         address indexed user,
-        uint256 hbarIn,
+        uint256 usdcIn,
         address[] tokens,
         uint256[] amounts
     );
