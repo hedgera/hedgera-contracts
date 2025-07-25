@@ -22,8 +22,9 @@ const config: HardhatUserConfig = {
       url: "https://mainnet.hashio.io/api",
       chainId: 295, // 0x127
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      gas: "auto",
-      gasPrice: "auto",
+      gas: 1500000000, // 15M gas limit
+      gasPrice: 350000000000, // 350 gwei (above minimum 320)
+      timeout: 60000,
     },
   },
   defaultNetwork: "hedera",
