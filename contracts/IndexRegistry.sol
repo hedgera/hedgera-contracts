@@ -167,8 +167,16 @@ contract IndexRegistry is Ownable, ReentrancyGuard, IIndexRegistry {
      * @param newTvl New total value locked
      * @param volumeToAdd Volume to add to total
      */
-    function updateIndexMetrics(uint256 indexId, uint256 newTvl, uint256 volumeToAdd) external override onlyAuthorized {
+    function updateIndexMetrics(uint256 indexId, uint256 newTvl, uint256 volumeToAdd) external override {
         require(indexId < _indexCounter, "IndexRegistry: index does not exist");
+        
+        // Allow either authorized factories or the index's own vault to update metrics
+        require(
+            authorizedFactories[msg.sender] || 
+            msg.sender == owner() || 
+            msg.sender == _indexes[indexId].vault,
+            "IndexRegistry: not authorized"
+        );
         
         _indexes[indexId].totalValueLocked = newTvl;
         _indexes[indexId].totalVolume += volumeToAdd;

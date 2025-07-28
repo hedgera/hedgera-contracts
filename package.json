@@ -4,6 +4,7 @@
     "deploy": "npx hardhat run scripts/deploy.ts --network hedera",
     "deploy:local": "npx hardhat run scripts/deploy.ts --network hardhat",
     "create-index": "npx hardhat run scripts/create-index.ts --network hedera",
+    "list-indexes": "npx hardhat run scripts/list-indexes.ts --network hedera",
     "mint-tokens": "npx hardhat run scripts/mint-tokens.ts --network hedera",
     "redeem-tokens": "npx hardhat run scripts/redeem-tokens.ts --network hedera",
     "compile": "npx hardhat compile",

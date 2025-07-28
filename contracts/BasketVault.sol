@@ -124,7 +124,7 @@ contract BasketVault is Ownable, ReentrancyGuard, IBasketVault {
         require(shares >= minShares, "BasketVault: insufficient shares");
 
         // Buy basket tokens
-        _buyBasketTokens(investmentAmount, indexInfo.components);
+        _buyBasketTokens(investmentAmount);
 
         // Mint index tokens
         indexToken.mint(msg.sender, shares);
@@ -164,7 +164,7 @@ contract BasketVault is Ownable, ReentrancyGuard, IBasketVault {
         require(totalSupply > 0, "BasketVault: no supply");
 
         // Sell proportional amount of basket tokens
-        uint256 grossAmount = _sellBasketTokens(shares, totalSupply, indexInfo.components);
+        uint256 grossAmount = _sellBasketTokens(shares);
 
         // Calculate fees
         uint256 feeAmount = (grossAmount * indexInfo.fees.redeemFee) / BASIS_POINTS;
@@ -194,7 +194,7 @@ contract BasketVault is Ownable, ReentrancyGuard, IBasketVault {
      * @notice Gets the current NAV per share in USDC
      * @return navPerShare NAV per share (18 decimals)
      */
-    function getNavPerShare() public view override returns (uint256 navPerShare) {
+    function getNavPerShare() public override returns (uint256 navPerShare) {
         uint256 totalSupply = indexToken.totalSupply();
         if (totalSupply == 0) {
             return 1e18; // 1 USDC per share initially
@@ -208,7 +208,7 @@ contract BasketVault is Ownable, ReentrancyGuard, IBasketVault {
      * @notice Gets the total value locked in USDC
      * @return tvl Total value locked (6 decimals)
      */
-    function getTotalValueLocked() public view override returns (uint256 tvl) {
+    function getTotalValueLocked() public override returns (uint256 tvl) {
         Types.IndexInfo memory indexInfo = registry.getIndex(indexId);
         
         for (uint256 i = 0; i < indexInfo.components.length; i++) {
@@ -217,8 +217,12 @@ contract BasketVault is Ownable, ReentrancyGuard, IBasketVault {
             
             if (balance > 0) {
                 // Get token value in USDC via router price query
-                // For MVP: simplified - assume 1:1 for now, real implementation would use DEX prices
-                tvl += balance; // This would need proper price conversion
+                try router.getTokenValueInUSDC(token, balance) returns (uint256 usdcValue) {
+                    tvl += usdcValue;
+                } catch {
+                    // If pricing fails, skip this token for TVL calculation
+                    // In production, might want alternative pricing sources
+                }
             }
         }
 
@@ -283,73 +287,109 @@ contract BasketVault is Ownable, ReentrancyGuard, IBasketVault {
     }
 
     /**
-     * @notice Internal function to buy basket tokens with USDC
-     * @param usdcAmount Amount of USDC to invest
-     * @param components Array of basket components
+     * @notice Buy basket tokens with USDC
+     * @param usdcAmount Amount of USDC to spend
      */
-    function _buyBasketTokens(uint256 usdcAmount, Types.Component[] memory components) internal {
-        for (uint256 i = 0; i < components.length; i++) {
-            uint256 allocation = (usdcAmount * components[i].weight) / BASIS_POINTS;
-            
-            if (allocation > 0) {
-                // For MVP: simplified swap logic
-                // Real implementation would use router.swapExactUSDCForTokens
-                // For now, we'll just approve and assume perfect swaps
-                usdc.approve(address(router), allocation);
-                
-                address[] memory path = new address[](2);
-                path[0] = address(usdc);
-                path[1] = components[i].token;
-                
-                // router.swapExactUSDCForTokens(
-                //     allocation,
-                //     0, // minAmountOut - would calculate based on slippage
-                //     path,
-                //     address(this),
-                //     block.timestamp + 300
-                // );
-            }
+    function _buyBasketTokens(uint256 usdcAmount) internal {
+        if (usdcAmount == 0) return;
+        
+        // Get index info from registry
+        Types.IndexInfo memory indexInfo = registry.getIndex(indexId);
+        
+        // Get token allocations based on weights
+        uint256[] memory allocations = new uint256[](indexInfo.components.length);
+        address[] memory tokens = new address[](indexInfo.components.length);
+        uint256[] memory minAmounts = new uint256[](indexInfo.components.length);
+        
+        for (uint256 i = 0; i < indexInfo.components.length; i++) {
+            allocations[i] = (usdcAmount * indexInfo.components[i].weight) / BASIS_POINTS;
+            tokens[i] = indexInfo.components[i].token;
+            minAmounts[i] = 0; // Accept any amount for MVP
+        }
+        
+        // Approve Router to spend USDC from this vault
+        usdc.approve(address(router), usdcAmount);
+        
+        // Execute batch swap through Router
+        try router.swapExactUSDCForTokens(
+            usdcAmount,
+            tokens,
+            allocations,
+            minAmounts,
+            address(this)
+        ) {
+            // Swaps completed successfully
+        } catch {
+            // If swaps fail, we still have USDC in the vault
+            // For MVP: continue operation
         }
     }
 
     /**
-     * @notice Internal function to sell basket tokens for USDC
-     * @param shares Number of shares being redeemed
-     * @param totalSupply Total supply of index tokens
-     * @param components Array of basket components
-     * @return usdcAmount Amount of USDC received
+     * @notice Sell basket tokens for USDC
+     * @param shareAmount Amount of shares being redeemed
      */
-    function _sellBasketTokens(
-        uint256 shares, 
-        uint256 totalSupply, 
-        Types.Component[] memory components
-    ) internal returns (uint256 usdcAmount) {
-        for (uint256 i = 0; i < components.length; i++) {
-            uint256 tokenBalance = IERC20(components[i].token).balanceOf(address(this));
-            uint256 tokensToSell = (tokenBalance * shares) / totalSupply;
+    function _sellBasketTokens(uint256 shareAmount) internal returns (uint256 usdcReceived) {
+        uint256 totalShares = indexToken.totalSupply();
+        if (totalShares == 0) return 0;
+        
+        // Get index info from registry
+        Types.IndexInfo memory indexInfo = registry.getIndex(indexId);
+        
+        address[] memory tokens = new address[](indexInfo.components.length);
+        uint256[] memory amounts = new uint256[](indexInfo.components.length);
+        uint256[] memory minUSDCAmounts = new uint256[](indexInfo.components.length);
+        uint256 tokenCount = 0;
+        
+        // Calculate token amounts to sell based on share proportion
+        for (uint256 i = 0; i < indexInfo.components.length; i++) {
+            IERC20 token = IERC20(indexInfo.components[i].token);
+            uint256 tokenBalance = token.balanceOf(address(this));
             
-            if (tokensToSell > 0) {
-                // For MVP: simplified swap logic
-                IERC20(components[i].token).approve(address(router), tokensToSell);
-                
-                address[] memory path = new address[](2);
-                path[0] = components[i].token;
-                path[1] = address(usdc);
-                
-                // uint256[] memory amounts = router.swapExactTokensForUSDC(
-                //     tokensToSell,
-                //     0, // minAmountOut
-                //     path,
-                //     address(this),
-                //     block.timestamp + 300
-                // );
-                // usdcAmount += amounts[amounts.length - 1];
-                
-                // For MVP: assume 1:1 conversion for simplicity
-                usdcAmount += tokensToSell;
+            if (tokenBalance > 0) {
+                uint256 tokenAmount = (tokenBalance * shareAmount) / totalShares;
+                if (tokenAmount > 0) {
+                    tokens[tokenCount] = indexInfo.components[i].token;
+                    amounts[tokenCount] = tokenAmount;
+                    minUSDCAmounts[tokenCount] = 0; // Accept any amount for MVP
+                    tokenCount++;
+                }
             }
         }
         
-        return usdcAmount;
+        if (tokenCount > 0) {
+            // Resize arrays to actual token count
+            address[] memory tokensToSell = new address[](tokenCount);
+            uint256[] memory amountsToSell = new uint256[](tokenCount);
+            uint256[] memory minAmounts = new uint256[](tokenCount);
+            
+            for (uint256 i = 0; i < tokenCount; i++) {
+                tokensToSell[i] = tokens[i];
+                amountsToSell[i] = amounts[i];
+                minAmounts[i] = minUSDCAmounts[i];
+                
+                // Approve Router to spend each token
+                IERC20(tokensToSell[i]).approve(address(router), amountsToSell[i]);
+            }
+            
+            // Execute batch sell through Router
+            try router.swapExactTokensForUSDC(
+                tokensToSell,
+                amountsToSell,
+                minAmounts,
+                address(this)
+            ) returns (uint256[] memory usdcAmounts) {
+                // Sum up USDC received
+                for (uint256 i = 0; i < usdcAmounts.length; i++) {
+                    usdcReceived += usdcAmounts[i];
+                }
+            } catch {
+                // If swaps fail, no USDC received from swaps
+                // Tokens remain in vault
+                usdcReceived = 0;
+            }
+        }
+        
+        return usdcReceived;
     }
 } 

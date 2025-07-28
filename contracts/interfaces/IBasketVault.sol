@@ -30,13 +30,13 @@ interface IBasketVault {
      * @notice Gets the current NAV (Net Asset Value) per share in USDC
      * @return navPerShare NAV per share (6 decimals for USDC)
      */
-    function getNavPerShare() external view returns (uint256 navPerShare);
+    function getNavPerShare() external returns (uint256 navPerShare);
 
     /**
      * @notice Gets the total value locked in the vault in USDC
      * @return tvl Total value locked (6 decimals for USDC)
      */
-    function getTotalValueLocked() external view returns (uint256 tvl);
+    function getTotalValueLocked() external returns (uint256 tvl);
 
     /**
      * @notice Gets the current basket composition
