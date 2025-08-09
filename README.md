@@ -205,8 +205,9 @@ cat deployments/hedera-mainnet.json
 ```
 
 
-## Flow 
+## 🔄 Minting Flow Diagram
 
+```mermaid
 sequenceDiagram
     participant User
     participant BasketVault
@@ -244,3 +245,4 @@ sequenceDiagram
     BasketVault->>+IndexToken: mint(User, shares)
     IndexToken-->>-User: transfer index tokens
     BasketVault-->>-User: emit Minted event
+```
